@@ -31,7 +31,7 @@ from homeassistant.const import (
     HTTP_HEADER_HA_AUTH, HTTP_HEADER_VARY, HTTP_METHOD_NOT_ALLOWED,
     HTTP_NOT_FOUND, HTTP_OK, HTTP_UNAUTHORIZED, HTTP_UNPROCESSABLE_ENTITY,
     SERVER_PORT)
-
+import hashlib
 DOMAIN = "http"
 
 CONF_API_PASSWORD = "api_password"
@@ -200,10 +200,11 @@ class RequestHandler(SimpleHTTPRequestHandler):
                 return
 
         self.authenticated = (self.server.api_password is None or
-                              self.headers.get(HTTP_HEADER_HA_AUTH) ==
-                              self.server.api_password or
-                              data.get(DATA_API_PASSWORD) ==
-                              self.server.api_password or
+                              (self.headers.get(HTTP_HEADER_HA_AUTH) is not None and
+                              hashlib.sha512(self.headers.get(HTTP_HEADER_HA_AUTH).encode("utf8")).hexdigest() ==
+                              self.server.api_password) or
+                              (data.get(DATA_API_PASSWORD) is not None and hashlib.sha512(data.get(DATA_API_PASSWORD).encode("utf8")).hexdigest() ==
+                              self.server.api_password) or
                               self.verify_session())
 
         if '_METHOD' in data:
