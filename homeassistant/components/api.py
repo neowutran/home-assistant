@@ -305,6 +305,7 @@ def _handle_post_api_event_forward(handler, path_match, data):
     try:
         host = data['host']
         api_password = data['api_password']
+        otp = data['otp']
     except KeyError:
         handler.write_json_message(
             "No host or api_password received.", HTTP_BAD_REQUEST)
@@ -317,7 +318,7 @@ def _handle_post_api_event_forward(handler, path_match, data):
             "Invalid value received for port", HTTP_UNPROCESSABLE_ENTITY)
         return
 
-    api = rem.API(host, api_password, port)
+    api = rem.API(host, api_password, otp, port)
 
     if not api.validate_api():
         handler.write_json_message(

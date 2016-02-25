@@ -314,6 +314,7 @@ def connect_remote_events(from_api, to_api):
     data = {
         'host': to_api.host,
         'api_password': to_api.api_password,
+        'otp': to_api.otp,
         'port': to_api.port
     }
 

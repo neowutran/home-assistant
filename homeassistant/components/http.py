@@ -8,6 +8,7 @@ https://home-assistant.io/developers/api/
 """
 import gzip
 import json
+import homeassistant.components.TOTP as TOTP
 import logging
 import os
 import ssl
@@ -42,6 +43,7 @@ CONF_SSL_CERTIFICATE = 'ssl_certificate'
 CONF_SSL_KEY = 'ssl_key'
 
 DATA_API_PASSWORD = 'api_password'
+TOTP_CODE = 'otp'
 
 # Throttling time in seconds for expired sessions check
 SESSION_CLEAR_INTERVAL = timedelta(seconds=20)
@@ -199,13 +201,27 @@ class RequestHandler(SimpleHTTPRequestHandler):
                     "Error parsing JSON", HTTP_UNPROCESSABLE_ENTITY)
                 return
 
-        self.authenticated = (self.server.api_password is None or
+        print(data.get(TOTP_CODE))
+        print(self.headers.get(HTTP_HEADER_HA_AUTH))
+        totp = TOTP.TOTP()
+
+        self.authenticated = (
+                              self.server.api_password is None
+                              or
                               (self.headers.get(HTTP_HEADER_HA_AUTH) is not None and
                               hashlib.sha512(self.headers.get(HTTP_HEADER_HA_AUTH).encode("utf8")).hexdigest() ==
-                              self.server.api_password) or
-                              (data.get(DATA_API_PASSWORD) is not None and hashlib.sha512(data.get(DATA_API_PASSWORD).encode("utf8")).hexdigest() ==
-                              self.server.api_password) or
-                              self.verify_session())
+                              self.server.api_password
+                               and
+                               totp.verify(self.headers.get(TOTP_CODE))
+                               )
+                              or
+                              (data.get(DATA_API_PASSWORD) is not None
+                               and hashlib.sha512(data.get(DATA_API_PASSWORD).encode("utf8")).hexdigest() == self.server.api_password
+                               and totp.verify(data.get(TOTP_CODE))
+                              )
+                              or
+                              self.verify_session()
+                              )
 
         if '_METHOD' in data:
             method = data.pop('_METHOD')
