@@ -205,6 +205,8 @@ class RequestHandler(SimpleHTTPRequestHandler):
         print(self.headers.get(HTTP_HEADER_HA_AUTH))
         totp = TOTP.TOTP()
 
+        self.csrf = data.get("csrf")
+
         self.authenticated = (
                               self.server.api_password is None
                               or
@@ -222,6 +224,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
                               or
                               self.verify_session()
                               )
+
 
         if '_METHOD' in data:
             method = data.pop('_METHOD')
@@ -258,6 +261,14 @@ class RequestHandler(SimpleHTTPRequestHandler):
             if require_auth and not self.authenticated:
                 self.write_json_message(
                     "API password missing or incorrect.", HTTP_UNAUTHORIZED)
+                return
+
+            print(method)
+
+            if require_auth and self.authenticated and self.csrf != self.get_cookie_session_id() and method == "POST":
+                self.write_json_message(
+                    "wrong CSRF token"
+                )
                 return
 
             handle_request_method(self, path_match, data)
@@ -398,7 +409,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
 
         self.send_header(
             'Set-Cookie',
-            '{}={}'.format(SESSION_KEY, self.server.sessions.create())
+            '{}={};path=/'.format(SESSION_KEY, self.server.sessions.create())
         )
 
         return session_id
